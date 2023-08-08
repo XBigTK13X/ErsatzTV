@@ -6,7 +6,7 @@ namespace ErsatzTV.Infrastructure.Emby;
 [Headers("Accept: application/json")]
 public interface IEmbyApi
 {
-    [Get("/System/Info")]
+    [Get("/System/Info/Public")]
     public Task<EmbySystemInformationResponse> GetSystemInformation(
         [Header("X-Emby-Token")]
         string apiKey,

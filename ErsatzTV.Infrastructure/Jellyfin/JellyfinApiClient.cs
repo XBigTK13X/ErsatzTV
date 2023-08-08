@@ -16,6 +16,7 @@ public class JellyfinApiClient : IJellyfinApiClient
     private readonly IJellyfinPathReplacementService _jellyfinPathReplacementService;
     private readonly ILogger<JellyfinApiClient> _logger;
     private readonly IMemoryCache _memoryCache;
+    private bool _authorizationV1;
 
     public JellyfinApiClient(
         IMemoryCache memoryCache,
@@ -27,16 +28,30 @@ public class JellyfinApiClient : IJellyfinApiClient
         _logger = logger;
     }
 
+    private IJellyfinApi getApi(string address, string apiKey)
+    {
+        var client = new HttpClient
+        {
+            BaseAddress = new Uri(address),
+            DefaultRequestHeaders = {
+                    {
+                        "Authorization", $"MediaBrowser Token=\"{apiKey}\""
+                    }
+                }
+        };
+        return RestService.For<IJellyfinApi>(client);
+    }
+
     public async Task<Either<BaseError, JellyfinServerInformation>> GetServerInformation(
         string address,
         string apiKey)
     {
         try
         {
-            IJellyfinApi service = RestService.For<IJellyfinApi>(address);
+            IJellyfinApi service = getApi(address, apiKey);
             var cts = new CancellationTokenSource();
             cts.CancelAfter(TimeSpan.FromSeconds(5));
-            return await service.GetSystemInformation(apiKey, cts.Token)
+            return await service.GetSystemInformation(cts.Token)
                 .Map(response => new JellyfinServerInformation(response.ServerName, response.OperatingSystem));
         }
         catch (Exception ex) when (ex is TaskCanceledException or OperationCanceledException)
@@ -47,6 +62,7 @@ public class JellyfinApiClient : IJellyfinApiClient
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting jellyfin server name");
+            _authorizationV1 = false;
             return BaseError.New(ex.Message);
         }
     }
@@ -55,8 +71,8 @@ public class JellyfinApiClient : IJellyfinApiClient
     {
         try
         {
-            IJellyfinApi service = RestService.For<IJellyfinApi>(address);
-            List<JellyfinLibraryResponse> libraries = await service.GetLibraries(apiKey);
+            IJellyfinApi service = getApi(address, apiKey);
+            List<JellyfinLibraryResponse> libraries = await service.GetLibraries();
             return libraries
                 .Map(Project)
                 .Somes()
@@ -73,8 +89,8 @@ public class JellyfinApiClient : IJellyfinApiClient
     {
         try
         {
-            IJellyfinApi service = RestService.For<IJellyfinApi>(address);
-            List<JellyfinUserResponse> users = await service.GetUsers(apiKey);
+            IJellyfinApi service = getApi(address, apiKey);
+            List<JellyfinUserResponse> users = await service.GetUsers();
             Option<string> maybeUserId = users
                 .Filter(user => user.Policy.IsAdministrator && !user.Policy.IsDisabled && user.Policy.EnableAllFolders)
                 .Map(user => user.Id)
@@ -227,9 +243,8 @@ public class JellyfinApiClient : IJellyfinApiClient
         {
             if (_memoryCache.TryGetValue($"jellyfin_admin_user_id.{library.MediaSourceId}", out string userId))
             {
-                IJellyfinApi service = RestService.For<IJellyfinApi>(address);
+                IJellyfinApi service = getApi(address, apiKey);
                 JellyfinLibraryItemsResponse items = await service.GetLibraryStats(
-                    apiKey,
                     userId,
                     parentId,
                     includeItemTypes,
@@ -256,8 +271,8 @@ public class JellyfinApiClient : IJellyfinApiClient
         {
             if (_memoryCache.TryGetValue($"jellyfin_admin_user_id.{library.MediaSourceId}", out string userId))
             {
-                IJellyfinApi service = RestService.For<IJellyfinApi>(address);
-                JellyfinPlaybackInfoResponse playbackInfo = await service.GetPlaybackInfo(apiKey, userId, itemId);
+                IJellyfinApi service = getApi(address, apiKey);
+                JellyfinPlaybackInfoResponse playbackInfo = await service.GetPlaybackInfo(userId, itemId);
                 Option<MediaVersion> maybeVersion = ProjectToMediaVersion(playbackInfo);
                 return maybeVersion.ToEither(() => BaseError.New("Unable to locate Jellyfin statistics"));
             }
@@ -283,19 +298,19 @@ public class JellyfinApiClient : IJellyfinApiClient
     {
         if (_memoryCache.TryGetValue($"jellyfin_admin_user_id.{mediaSourceId}", out string userId))
         {
-            IJellyfinApi service = RestService.For<IJellyfinApi>(address);
+            IJellyfinApi service = getApi(address, apiKey);
             string filters = itemType == JellyfinItemType.Movie || itemType == JellyfinItemType.Episode
                 ? "IsNotFolder"
                 : null;
             int size = await service
-                .GetLibraryStats(apiKey, userId, parentId, itemType, filters: filters)
+                .GetLibraryStats(userId, parentId, itemType, filters: filters)
                 .Map(r => r.TotalRecordCount);
 
             const int PAGE_SIZE = 10;
 
             int pages = (size - 1) / PAGE_SIZE + 1;
 
-            for (var i = 0; i < pages; i++)
+            for (int i = 0; i < pages; i++)
             {
                 int skip = i * PAGE_SIZE;
 

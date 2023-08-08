@@ -6,26 +6,19 @@ namespace ErsatzTV.Infrastructure.Jellyfin;
 [Headers("Accept: application/json")]
 public interface IJellyfinApi
 {
-    [Get("/System/Info")]
+    [Get("/System/Info/Public")]
     public Task<JellyfinSystemInformationResponse> GetSystemInformation(
-        [Header("X-Emby-Token")]
-        string apiKey,
         CancellationToken cancellationToken);
 
+
     [Get("/Users")]
-    public Task<List<JellyfinUserResponse>> GetUsers(
-        [Header("X-Emby-Token")]
-        string apiKey);
+    public Task<List<JellyfinUserResponse>> GetUsers();
 
     [Get("/Library/VirtualFolders")]
-    public Task<List<JellyfinLibraryResponse>> GetLibraries(
-        [Header("X-Emby-Token")]
-        string apiKey);
+    public Task<List<JellyfinLibraryResponse>> GetLibraries();
 
     [Get("/Items")]
     public Task<JellyfinLibraryItemsResponse> GetLibraryStats(
-        [Header("X-Emby-Token")]
-        string apiKey,
         [Query]
         string userId,
         [Query]
@@ -43,8 +36,6 @@ public interface IJellyfinApi
 
     [Get("/Items?sortOrder=Ascending&sortBy=SortName")]
     public Task<JellyfinLibraryItemsResponse> GetMovieLibraryItems(
-        [Header("X-Emby-Token")]
-        string apiKey,
         [Query]
         string userId,
         [Query]
@@ -65,8 +56,6 @@ public interface IJellyfinApi
 
     [Get("/Items?sortOrder=Ascending&sortBy=SortName")]
     public Task<JellyfinLibraryItemsResponse> GetShowLibraryItems(
-        [Header("X-Emby-Token")]
-        string apiKey,
         [Query]
         string userId,
         [Query]
@@ -85,8 +74,6 @@ public interface IJellyfinApi
 
     [Get("/Items?sortOrder=Ascending&sortBy=SortName")]
     public Task<JellyfinLibraryItemsResponse> GetSeasonLibraryItems(
-        [Header("X-Emby-Token")]
-        string apiKey,
         [Query]
         string userId,
         [Query]
@@ -104,8 +91,6 @@ public interface IJellyfinApi
 
     [Get("/Items?sortOrder=Ascending&sortBy=SortName")]
     public Task<JellyfinLibraryItemsResponse> GetEpisodeLibraryItems(
-        [Header("X-Emby-Token")]
-        string apiKey,
         [Query]
         string userId,
         [Query]
@@ -123,8 +108,6 @@ public interface IJellyfinApi
 
     [Get("/Items?sortOrder=Ascending&sortBy=SortName")]
     public Task<JellyfinLibraryItemsResponse> GetCollectionLibraryItems(
-        [Header("X-Emby-Token")]
-        string apiKey,
         [Query]
         string userId,
         [Query]
@@ -142,8 +125,6 @@ public interface IJellyfinApi
 
     [Get("/Items?sortOrder=Ascending&sortBy=SortName")]
     public Task<JellyfinLibraryItemsResponse> GetCollectionItems(
-        [Header("X-Emby-Token")]
-        string apiKey,
         [Query]
         string userId,
         [Query]
@@ -161,8 +142,6 @@ public interface IJellyfinApi
 
     [Get("/Items/{itemId}/PlaybackInfo")]
     public Task<JellyfinPlaybackInfoResponse> GetPlaybackInfo(
-        [Header("X-Emby-Token")]
-        string apiKey,
         [Query]
         string userId,
         string itemId);
